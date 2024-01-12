@@ -10,14 +10,15 @@ import java.util.List;
 
 public class Game extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
     private static final int DELAY = 10;
-    private static final double EDGE_RES = 0.9;
+    private static final double EDGE_RES = 0.5;
     private static final int lBound = 477;
     private static final int rBound = 1000;
     private static final int bBound = 776;
     private static final int tBound = 150;
     private static final Font SCORE_FONT  = new Font(Font.SERIF, Font.PLAIN,  30);
+    private static final Vector2D NEXT_FRUIT_POS = new Vector2D(1260, 200);
     Image background;
-    Fruit nextFruit;
+    Fruit curFruit, nextFruit;
     TimeTracker frameTracker;
     int curID;
     int score;
@@ -37,7 +38,7 @@ public class Game extends JPanel implements KeyListener, MouseListener, MouseMot
         for(Fruit fruit : fruits){
             drawFruit(g2d, fruit);
         }
-
+        drawFruit(g2d, curFruit);
         drawFruit(g2d, nextFruit);
     }
 
@@ -60,7 +61,8 @@ public class Game extends JPanel implements KeyListener, MouseListener, MouseMot
 
         fruits = new ArrayList<>();
 
-        nextFruit = new Fruit(400, 100, 0, 0);
+        nextFruit = new Fruit(NEXT_FRUIT_POS.x, NEXT_FRUIT_POS.y, 0, 0);
+        curFruit = new Fruit((lBound+rBound)/2,100, 0, 0);
         curID = 1;
         frameTracker = new TimeTracker();
         timer = new Timer(DELAY, ev -> {
@@ -71,25 +73,26 @@ public class Game extends JPanel implements KeyListener, MouseListener, MouseMot
     }
 
     public void update(double timeDelta) {
-        System.out.println(timeDelta);
+
         for (Fruit f : fruits) {
             f.update(timeDelta);
+            f.groundSupport = 0;
             if (f.getX()-f.getRadius() <= lBound){
                 f.velocity.x = Math.abs(f.velocity.x) * EDGE_RES;
                 f.setX(lBound + f.getRadius());
-                f.rotationalVelocity *= Math.pow(EDGE_RES, timeDelta);
+                f.groundSupport += 0.5;
             }else if (f.getX() + f.getRadius() >= rBound){
                 f.velocity.x = -Math.abs(f.velocity.x) * EDGE_RES;
                 f.setX(rBound - f.getRadius());
-                f.rotationalVelocity *= Math.pow(EDGE_RES, timeDelta);
+                f.groundSupport += 0.5;
             }
 
             // Check for bottom and top
             if (f.getY() + f.getRadius() >= bBound){
-                f.velocity.y = Math.abs(f.velocity.y) * EDGE_RES;
+                f.velocity.y = 0;
                 f.velocity.x *= Math.pow(EDGE_RES, timeDelta);
-                f.rotationalVelocity *= Math.pow(EDGE_RES, timeDelta);
                 f.setY(bBound-f.getRadius());
+                f.groundSupport += 1;
             } else if (f.getY() - f.getRadius() <= tBound){
                 System.out.println("Lost");
             }
@@ -99,11 +102,16 @@ public class Game extends JPanel implements KeyListener, MouseListener, MouseMot
             if(c.fruit1.type == c.fruit2.type){
                 combineFruits(c);
             } else {
-                Fruit.repel(c.fruit1, c.fruit2, Fruit.restitution, timeDelta);
+                Fruit.repel(c.fruit1, c.fruit2, PhysicsObject.FORCE_BIAS, timeDelta);
                 Fruit.correctClipping(c.fruit1, c.fruit2);
+                if(c.fruit1.groundSupport>=1&& c.fruit2.groundSupport<1) {
+                    c.fruit2.groundSupport += 1.5-Math.abs(c.fruit2.getPos().directionVector(c.fruit1.getPos()).x);
+                } else if (c.fruit2.groundSupport>=1&& c.fruit1.groundSupport<1){
+                    c.fruit1.groundSupport += 1.5-Math.abs(c.fruit1.getPos().directionVector(c.fruit2.getPos()).x);
+                }
+
             }
         }
-
     }
     public void combineFruits(FruitCollision collision){
         collision.fruit1.upgrade(collision.fruit2);
@@ -112,7 +120,14 @@ public class Game extends JPanel implements KeyListener, MouseListener, MouseMot
     }
 
     public int randFruit(){
-        int ret = (int) (Math.random()*4);
+        int ret = 0;
+        if(score == 0){
+            ret = (int) (Math.random()*2);
+        } else if (score <=100){
+            ret = (int) (Math.random()*3);
+        } else{
+            ret = (int) (Math.random() * 4);
+        }
         return ret;
     }
 
@@ -125,8 +140,9 @@ public class Game extends JPanel implements KeyListener, MouseListener, MouseMot
     @Override
     public void mouseClicked(MouseEvent e) {
         //creates a new fruit
-        //adds a small bias to prevent pixel perfect placement that messes with the physics
-        fruits.add(new Fruit(nextFruit.getX()+Math.random()-0.5, nextFruit.getY(), nextFruit.type, curID++));
+        fruits.add(curFruit.clone(++curID));
+        curFruit = nextFruit.clone();
+        curFruit.setX(Math.min(Math.max(e.getX(), lBound+ nextFruit.getRadius()),rBound- nextFruit.getRadius()));
         nextFruit.setType(randFruit());
         update(frameTracker.timeFromLast());
         repaint();
@@ -135,7 +151,7 @@ public class Game extends JPanel implements KeyListener, MouseListener, MouseMot
     @Override
     public void mouseMoved(MouseEvent e) {
         //tracks the mouse movement
-        nextFruit.setX(Math.min(Math.max(e.getX(), lBound),rBound));
+        curFruit.setX(Math.min(Math.max(e.getX(), lBound+ curFruit.getRadius()),rBound- curFruit.getRadius()));
     }
 
     // unused interface methods

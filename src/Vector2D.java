@@ -26,6 +26,9 @@ public class Vector2D {
         return new Vector2D(vec1.x+vec2.x, vec1.y+ vec2.y);
     }
     static Vector2D difference(Vector2D vec1, Vector2D vec2){return new Vector2D(vec1.x-vec2.x, vec1.y - vec2.y);}
+    static public Vector2D normalize(Vector2D v2d){
+        return v2d.scaled(1/v2d.magnitude());
+    }
 
     public void multiply(Vector2D other){
         this.x *= other.x;
@@ -34,12 +37,10 @@ public class Vector2D {
     public Vector2D scaled(double factor){
         return new Vector2D(x*factor, y*factor);
     }
-    public Vector2D normalized(){
-        return scaled(1/magnitude());
-    }
+
     public Vector2D directionVector(Vector2D other){
-        Vector2D dir = new Vector2D(other.x-x, other.y-y);
-        return dir.normalized();
+        Vector2D dir = Vector2D.difference(other, this);
+        return Vector2D.normalize(dir);
     }
 
     public double dot(Vector2D other){

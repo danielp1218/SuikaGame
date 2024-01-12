@@ -7,11 +7,11 @@ public class Main {
         Game game = new Game();
         frame.add(game);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
         frame.pack();
         frame.setVisible(true);
     }
 
-    //TODO: Fix imports after done testing and sort into packages
     public static void main(String[] args) {
         init();
     }

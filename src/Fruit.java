@@ -6,42 +6,45 @@ import java.util.List;
 
 public class Fruit implements PhysicsObject {
     static final FruitBody fruitBodies[] = {
-            new FruitBody(15, 3, 1, "images/testfruit.png"),
-            new FruitBody(25, 3.2, 3, "images/testfruit.png"),
-            new FruitBody(35, 3.4, 6, "images/testfruit.png"),
-            new FruitBody(45, 3.6, 10, "images/testfruit.png"),
-            new FruitBody(55, 3.8, 15, "images/testfruit.png"),
-            new FruitBody(70, 4, 21, "images/testfruit.png"),
-            new FruitBody(90, 4.2, 28, "images/testfruit.png"),
-            new FruitBody(110, 4.4, 36, "images/testfruit.png"),
-            new FruitBody(130, 4.6, 45, "images/testfruit.png"),
-            new FruitBody(150, 4.8, 55, "images/testfruit.png"),
-            new FruitBody(180, 4.8, 66, "images/testfruit.png")
+            new FruitBody(15, 3, 1, "images/fruit1.png"),
+            new FruitBody(25, 3.2, 3, "images/fruit2.png"),
+            new FruitBody(40, 3.4, 6, "images/fruit3.png"),
+            new FruitBody(55, 3.6, 10, "images/fruit4.png"),
+            new FruitBody(70, 3.8, 15, "images/fruit5.png"),
+            new FruitBody(85, 4, 21, "images/fruit6.png"),
+            new FruitBody(115, 4.2, 28, "images/fruit1.png"),
+            new FruitBody(135, 4.4, 36, "images/fruit2.png"),
+            new FruitBody(160, 4.6, 45, "images/fruit3.png"),
+            new FruitBody(185, 4.8, 55, "images/fruit4.png"),
+            new FruitBody(210, 5, 66, "images/fruit5.png")
     };
-    public double rotationalVelocity;
+    final static double RESTITUTION = 0.7;
+    final static double GROUND_BIAS = 2;
     public double rotation;
     public Vector2D velocity;
-    static double restitution = 0.8;
-    static double terminalVelocity = 500;
+    static double terminalVelocity = 600;
     public double mass;
     public int type;
     public CircleCollider body;
-    public boolean moving;
+    public double groundSupport;
 
     double getRadius(){
         return body.radius;
     }
-    double getX(){
-        return body.center.x;
+    int getX(){
+        return (int)body.center.x;
     }
     void setX(double x){
         body.center.x = x;
     }
-    double getY(){
-        return body.center.y;
+    int getY(){
+        return (int)body.center.y;
     }
     void setY(double y){
         body.center.y = y;
+    }
+    void setID(int id){
+        body.id = id;
     }
     Vector2D getPos(){
         return body.center;
@@ -52,8 +55,9 @@ public class Fruit implements PhysicsObject {
     int getScore() {
         return fruitBodies[type].points;
     }
+
     static public List<FruitCollision> getCollidingFruits(List<Fruit> fruits) {
-        List<FruitCollision> collisions = new ArrayList<FruitCollision>();
+        List<FruitCollision> collisions = new ArrayList<>();
         for(int i = 0 ; i < fruits.size() ;++i){
             for(int j = i + 1; j < fruits.size() ; ++j){
                 if(fruits.get(i).body.isColliding(fruits.get(j))){
@@ -63,24 +67,32 @@ public class Fruit implements PhysicsObject {
         }
         return collisions;
     }
-    static public void repel(Fruit fruit1, Fruit fruit2, double energyConserved, double timeDelta) {
+    static public void repel(Fruit fruit1, Fruit fruit2, Vector2D bias, double timeDelta) {
         Vector2D dir = fruit1.getPos().directionVector(fruit2.getPos());
-        double speed = dir.dot(Vector2D.difference(fruit1.velocity, fruit2.velocity));
+        double speed = dir.dot(Vector2D.difference(fruit1.velocity, fruit2.velocity))*RESTITUTION;
+
         if(speed < 0){
             return;
         }
-        if(fruit1.getX() < fruit2.getX()){
-            fruit1.rotationalVelocity += -speed*timeDelta*5;
-            fruit2.rotationalVelocity += speed*timeDelta*5;
+        System.out.println(speed);
+        fruit1.velocity = fruit1.velocity.scaled(Math.pow(RESTITUTION, timeDelta));
+        fruit2.velocity = fruit2.velocity.scaled(Math.pow(RESTITUTION, timeDelta));
+
+        if(fruit1.groundSupport>=1 && fruit2.groundSupport<1){
+            fruit1.velocity.add(Vector2D.sum(dir,bias).scaled(-fruit2.mass/(fruit1.mass+fruit2.mass+GROUND_BIAS)*speed));
+            fruit2.velocity.add(Vector2D.sum(dir,bias).scaled((fruit1.mass+GROUND_BIAS)/(fruit1.mass+fruit2.mass+GROUND_BIAS)*speed));
+        } else if (fruit2.groundSupport>=1&& fruit1.groundSupport<1){
+            fruit1.velocity.add(Vector2D.sum(dir,bias).scaled(-(fruit2.mass+GROUND_BIAS)/(fruit1.mass+fruit2.mass+GROUND_BIAS)*speed));
+            fruit2.velocity.add(Vector2D.sum(dir,bias).scaled((fruit1.mass)/(fruit1.mass+fruit2.mass+GROUND_BIAS)*speed));
         } else{
-            fruit1.rotationalVelocity += speed*timeDelta*5;
-            fruit2.rotationalVelocity += -speed*timeDelta*5;
+            fruit1.velocity.add(Vector2D.sum(dir,bias).scaled(-(fruit2.mass)/(fruit1.mass+fruit2.mass)*speed));
+            fruit2.velocity.add(Vector2D.sum(dir,bias).scaled((fruit1.mass)/(fruit1.mass+fruit2.mass)*speed));
         }
 
 
-        fruit1.velocity = dir.scaled(-fruit1.mass/(fruit1.mass+fruit2.mass)*(energyConserved*timeDelta-timeDelta + 1)*speed);
-        fruit2.velocity = dir.scaled(fruit2.mass/(fruit1.mass+fruit2.mass)*energyConserved*speed);
+
     }
+
     static public void correctClipping(Fruit fruit1, Fruit fruit2) {
         double overlap = fruit1.getRadius() + fruit2.getRadius() - fruit1.getPos().distanceFrom(fruit2.getPos());
         fruit1.getPos().add(fruit2.getPos().directionVector(fruit1.getPos()).scaled(overlap/2));
@@ -103,31 +115,32 @@ public class Fruit implements PhysicsObject {
 
     @Override
     public void update(double timeDelta){
-        velocity.add(PhysicsObject.GRAVITY.scaled(timeDelta));
+        if(groundSupport<1){
+            velocity.add(PhysicsObject.GRAVITY.scaled(timeDelta));
+        }
         if(velocity.magnitude() > terminalVelocity){
-            velocity = velocity.normalized().scaled(terminalVelocity);
+            velocity = Vector2D.normalize(velocity).scaled(terminalVelocity);
         }
         body.center.add(velocity.scaled(timeDelta));
-        body.center.x += rotationalVelocity/180*getRadius()*timeDelta;
-        rotation += rotationalVelocity*timeDelta;
-
-
+        rotation += velocity.x*180/(Math.PI*getRadius())*timeDelta;
     }
-
-
-
 
 
     public Fruit(double x,double y, int fruit, int id){
         // TODO: fix hardcode later
         type = fruit;
         velocity = new Vector2D(0,0);
-        rotationalVelocity = 0;
-        moving = true;
+        groundSupport = 0;
         body = new CircleCollider(new Vector2D(x, y),fruitBodies[type].radius, id);
         mass = fruitBodies[type].mass;
         rotation = 0;
-        rotationalVelocity= 10;
+    }
+
+    public Fruit clone(){
+        return new Fruit(this.getX(), this.getY(), this.type, this.body.id);
+    }
+    public Fruit clone(int id){
+        return new Fruit(this.getX(), this.getY(), this.type, id);
     }
 
 
