@@ -1,15 +1,15 @@
 import javax.swing.*;
+import java.awt.*;
 
 public class Main {
 
-    public static void init(){
+    public static void init() {
         JFrame frame = new JFrame();
-        Game game = new Game();
-        frame.add(game);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
-        frame.pack();
+        frame.setSize(new Dimension(1472, 830));
         frame.setVisible(true);
+        ScreenManager manager = new ScreenManager(frame);
     }
 
     public static void main(String[] args) {

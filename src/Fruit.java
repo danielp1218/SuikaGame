@@ -1,33 +1,39 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Fruit implements PhysicsObject {
-    static final FruitBody fruitBodies[] = {
-            new FruitBody(15, 3, 1, "images/fruit1.png"),
-            new FruitBody(25, 3.2, 3, "images/fruit2.png"),
-            new FruitBody(40, 3.4, 6, "images/fruit3.png"),
-            new FruitBody(55, 3.6, 10, "images/fruit4.png"),
-            new FruitBody(70, 3.8, 15, "images/fruit5.png"),
-            new FruitBody(85, 4, 21, "images/fruit6.png"),
-            new FruitBody(115, 4.2, 28, "images/fruit1.png"),
-            new FruitBody(135, 4.4, 36, "images/fruit2.png"),
-            new FruitBody(160, 4.6, 45, "images/fruit3.png"),
-            new FruitBody(185, 4.8, 55, "images/fruit4.png"),
-            new FruitBody(210, 5, 66, "images/fruit5.png")
+    static final FruitBody[] fruitBodies = {
+            new FruitBody(17, 11,3, 1, "images/cherry.png"),
+            new FruitBody(22, 4,4, 3, "images/strawberry.png"),
+            new FruitBody(28, 0,5, 6, "images/blueberry.png"),
+            new FruitBody(37, 8,6, 10, "images/dekopon.png"),
+            new FruitBody(45, 8,7, 15, "images/orange.png"),
+            new FruitBody(54, 6,8, 21, "images/apple.png"),
+            new FruitBody(64, 7,9, 28, "images/pear.png"),
+            new FruitBody(76, 2,10, 36, "images/peach.png"),
+            new FruitBody(100, 27,11, 45, "images/pineapple.png"),
+            new FruitBody(120, 0,12, 55, "images/melon.png"),
+            new FruitBody(150, 0,13, 66, "images/watermelon.png")
     };
     final static double RESTITUTION = 0.7;
-    final static double GROUND_BIAS = 2;
+    final static double GROUND_BIAS = 1;
+    final static int GRACE_PERIOD = 2000;
+    static double terminalVelocity = 600;
     public double rotation;
     public Vector2D velocity;
-    static double terminalVelocity = 600;
     public double mass;
     public int type;
     public CircleCollider body;
     public double groundSupport;
+    public boolean gracePeriod;
 
+
+    //Getters and setters
     double getRadius(){
         return body.radius;
     }
@@ -43,9 +49,6 @@ public class Fruit implements PhysicsObject {
     void setY(double y){
         body.center.y = y;
     }
-    void setID(int id){
-        body.id = id;
-    }
     Vector2D getPos(){
         return body.center;
     }
@@ -55,6 +58,15 @@ public class Fruit implements PhysicsObject {
     int getScore() {
         return fruitBodies[type].points;
     }
+    void setType(int newType){
+        type = Math.min(fruitBodies.length-1, newType);
+        body.radius = fruitBodies[type].radius;
+        mass = fruitBodies[type].mass;
+    }
+    public int getImageSize(){
+        return (int)(getRadius() + fruitBodies[type].addon)*2;
+    }
+
 
     static public List<FruitCollision> getCollidingFruits(List<Fruit> fruits) {
         List<FruitCollision> collisions = new ArrayList<>();
@@ -74,7 +86,6 @@ public class Fruit implements PhysicsObject {
         if(speed < 0){
             return;
         }
-        System.out.println(speed);
         fruit1.velocity = fruit1.velocity.scaled(Math.pow(RESTITUTION, timeDelta));
         fruit2.velocity = fruit2.velocity.scaled(Math.pow(RESTITUTION, timeDelta));
 
@@ -88,10 +99,8 @@ public class Fruit implements PhysicsObject {
             fruit1.velocity.add(Vector2D.sum(dir,bias).scaled(-(fruit2.mass)/(fruit1.mass+fruit2.mass)*speed));
             fruit2.velocity.add(Vector2D.sum(dir,bias).scaled((fruit1.mass)/(fruit1.mass+fruit2.mass)*speed));
         }
-
-
-
     }
+
 
     static public void correctClipping(Fruit fruit1, Fruit fruit2) {
         double overlap = fruit1.getRadius() + fruit2.getRadius() - fruit1.getPos().distanceFrom(fruit2.getPos());
@@ -104,19 +113,26 @@ public class Fruit implements PhysicsObject {
             ++type;
             body.radius = fruitBodies[type].radius;
             mass = fruitBodies[type].mass;
-            body.center = new Vector2D((getX()+f.getX())/2, (getY()+f.getY())/2);
+            body.center = Vector2D.sum(body.center, f.body.center).scaled(0.5);
+            velocity = Vector2D.sum(velocity, f.velocity).scaled(0.5);
         }
     }
-    public void setType(int newType){
-        type = Math.min(fruitBodies.length-1, newType);
-        body.radius = fruitBodies[type].radius;
-        mass = fruitBodies[type].mass;
+
+    @Override
+    public void render(Graphics2D g2d){
+        g2d.rotate(Math.toRadians(rotation), getX(), getY());
+
+        g2d.drawImage(getImage(), getX() - getImageSize()/2,getY() - getImageSize()/2, getImageSize(), getImageSize(), null);
+        g2d.drawOval((int)(getX() - getRadius()), getY() - (int)getRadius(), (int)getRadius()*2, (int)getRadius()*2);
+        g2d.rotate(Math.toRadians(-rotation), getX(), getY());
     }
 
     @Override
     public void update(double timeDelta){
         if(groundSupport<1){
             velocity.add(PhysicsObject.GRAVITY.scaled(timeDelta));
+        } else if (velocity.y < 0 && velocity.y >-5){
+            velocity.y = 0;
         }
         if(velocity.magnitude() > terminalVelocity){
             velocity = Vector2D.normalize(velocity).scaled(terminalVelocity);
@@ -134,6 +150,10 @@ public class Fruit implements PhysicsObject {
         body = new CircleCollider(new Vector2D(x, y),fruitBodies[type].radius, id);
         mass = fruitBodies[type].mass;
         rotation = 0;
+        gracePeriod = true;
+        Timer gracePeriodTimer = new Timer(GRACE_PERIOD, event -> gracePeriod = false);
+        gracePeriodTimer.setRepeats(false); // Only execute once
+        gracePeriodTimer.start();
     }
 
     public Fruit clone(){

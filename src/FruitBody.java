@@ -1,16 +1,17 @@
 import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
 public class FruitBody {
-    double radius, mass;
-    int points;
+    double mass;
+    int points, radius, addon;
     BufferedImage img;
 
-    public FruitBody(int radius, double mass, int points, String imagePath){
+
+
+    public FruitBody(int radius, int addon, double mass, int points, String imagePath){
         this.radius = radius;
+        this.addon = addon;
         this.mass = mass;
         this.points = points;
         try{
