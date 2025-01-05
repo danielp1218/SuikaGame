@@ -1,7 +1,10 @@
-Suika Game!
-ICS3U Culminating
+Suika Game! 
+<br/>
+ICS3U Culminating 
+<br/>
 By: Daniel Pu
-Submitted: 2024/01/22 at 12:24 AM
+
+Demo: https://youtu.be/nTVNkSFv_mU
 
 How To Play:
 - Move your mouse around to select where you want to drop your fruit
